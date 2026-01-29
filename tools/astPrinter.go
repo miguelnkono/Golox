@@ -41,7 +41,7 @@ func (a *AstPrinter) parenthesize(name string, expressions ...expr.Expression[an
 		builder.WriteString(" ")
 		// We assert to string here because we know AstPrinter always returns strings
 		result := exp.Accept(a)
-		builder.WriteString(fmt.Sprintf("%v", result))
+    fmt.Fprintf(&builder, "%v", result)
 	}
 
 	builder.WriteString(")")

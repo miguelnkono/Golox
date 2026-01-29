@@ -60,12 +60,9 @@ func runPrompt() {
 }
 
 func run(source string) error {
-	// execute the source code of the user
-	// scan
 	scanner := NewScanner(source)
 	tokens := scanner.ScanTokens()
 
-	// parse
 	parser := parser.NewParser(tokens)
 	expression, err := parser.Parse()
 

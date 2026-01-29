@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"golox/expr"
 	"golox/token"
+	"slices"
 	"strconv"
 )
 
@@ -193,21 +194,21 @@ func (p *Parser) synchronize() {
 
 func (p *Parser) match(tokens ...token.TokenType) bool {
 
-	for _, tokenType := range tokens {
-		if p.check(tokenType) {
-			p.advance()
-			return true
-		}
-	}
-
-	// found := slices.ContainsFunc(tokens, func(t token.TokenType) bool {
-	// 	return p.check(t)
-	// })
-
-	// if found {
-	// 	p.advance()
-	// 	return true
+	// for _, tokenType := range tokens {
+	// 	if p.check(tokenType) {
+	// 		p.advance()
+	// 		return true
+	// 	}
 	// }
+
+	found := slices.ContainsFunc(tokens, func(t token.TokenType) bool {
+		return p.check(t)
+	})
+
+	if found {
+		p.advance()
+		return true
+	}
 
 	return false
 }
