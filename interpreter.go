@@ -14,18 +14,24 @@ type runtimeError struct {
 type Interpreter struct {
 }
 
-func (i *Interpreter) Interpret() string {
+func (i *Interpreter) Interpret(expression expr.Expression[any]) (result string) {
 	defer func() {
 		if r := recover(); r != nil {
-			if recovered, ok := r.(runtimeError); ok {
-				panic(recovered)
+			if runtimeErr, ok := r.(runtimeError); ok {
+				result = runtimeErr.Error()
 			} else {
+				panic(r)
 			}
 		}
 	}()
-  
-  // TODO: Finish this function today.
-  return ""
+
+	value := i.evaluate(expression)
+	if value == nil {
+		return "nil"
+	}
+  fmt.Println(value)
+
+	return ""
 }
 
 func (i *Interpreter) VisitBinary(binary *expr.Binary[any]) any {
@@ -45,15 +51,17 @@ func (i *Interpreter) VisitBinary(binary *expr.Binary[any]) any {
 		i.checkNumberOperands(left, right, binary.Operator.String())
 		return left.(float64) * right.(float64)
 	case token.PLUS:
-		// TODO: need to add robust type checking here.
-		switch left.(type) {
+		switch l := left.(type) {
 		case float64:
-			return left.(float64) + right.(float64)
+			if r, ok := right.(float64); ok {
+				return l + r
+			}
 		case string:
-			return fmt.Sprintf("%s+%s", left.(string), right.(string))
-		default:
-			panic(i.error(fmt.Sprintf("%s: Operands must be numbers or strings", binary.Operator.String())))
+			if r, ok := right.(string); ok {
+				return l + r
+			}
 		}
+		panic(i.error("%s: Operands must be numbers or strings", binary.Operator.String()))
 
 		// comparison operators
 	case token.GREATER:
@@ -80,7 +88,7 @@ func (i *Interpreter) VisitBinary(binary *expr.Binary[any]) any {
 }
 
 func (i *Interpreter) VisitUnary(unary *expr.Unary[any]) any {
-	object := i.evaluate(unary)
+	object := i.evaluate(unary.Right)
 
 	if unary.Operator.TokenType == token.MINUS {
 		i.checkNumberOperand(object, unary.Operator.String())
@@ -88,7 +96,7 @@ func (i *Interpreter) VisitUnary(unary *expr.Unary[any]) any {
 	}
 
 	if unary.Operator.TokenType == token.BANG {
-		return i.isTruthy(object)
+		return !i.isTruthy(object)
 	}
 
 	// unreachable
@@ -106,16 +114,12 @@ func (i *Interpreter) VisitLiteral(literal *expr.Literal[any]) any {
 // helper functions
 func (i *Interpreter) isEqual(left, right token.Object) bool {
 	if left == nil && right == nil {
-		return false
+		return true
 	}
-	if left == nil {
-		return false
-	}
-	if right == nil {
+	if left == nil || right == nil {
 		return false
 	}
 
-	// TODO: will find maybe a better equality check
 	return left == right
 }
 
@@ -138,17 +142,16 @@ func (i *Interpreter) isTruthy(object any) bool {
 }
 
 // function to check on errors
-func (i *Interpreter) checkNumberOperands(tok1, tok2 any, operand token.Object) {
-	switch tok1.(type) {
+func (i *Interpreter) checkNumberOperands(left, right any, op token.Object) {
+	switch left.(type) {
 	case float64:
-		switch tok2.(type) {
+		switch right.(type) {
 		case float64:
 			return
 		}
 	}
 
-	// panic(i.error("Operand must be a number", fmt.Sprint("%v", tok.String())))
-	panic(i.error(fmt.Sprintf("%s Operand must be a number", operand.(string))))
+	panic(i.error("%s Operand must be a number", op))
 }
 
 func (i *Interpreter) checkNumberOperand(tok any, operand token.Object) {
@@ -158,7 +161,7 @@ func (i *Interpreter) checkNumberOperand(tok any, operand token.Object) {
 	}
 
 	// panic(i.error("Operand must be a number", fmt.Sprint("%v", tok.String())))
-	panic(i.error(fmt.Sprintf("%s Operand must be a numbers", operand.(string))))
+	panic(i.error("%s Operand must be a numbers", operand.(string)))
 }
 
 func (r runtimeError) Error() string {

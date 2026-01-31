@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"golox/errors"
 	"golox/parser"
-	"golox/tools"
 	"log"
 	"os"
 	"path/filepath"
@@ -37,6 +36,9 @@ func runFile(path string) {
 	run(string(source))
 	if errors.HadError {
 		os.Exit(65)
+	}
+	if errors.HadRuntimeError {
+		os.Exit(70)
 	}
 }
 
@@ -71,10 +73,15 @@ func run(source string) error {
 		return nil
 	}
 
-	if expression != nil {
-		astPrint := tools.AstPrinter{}
-		fmt.Println(astPrint.Print(expression))
-	}
+  // if errors.HadError { return  }
+
+  intepreter := Interpreter{}
+  errStr := intepreter.Interpret(expression)
+  if errStr == " " {
+    errors.ReportRuntimeError(errStr)
+    errors.HadRuntimeError = true
+  }
 
 	return nil
 }
+
