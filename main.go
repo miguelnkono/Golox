@@ -8,33 +8,35 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func main() {
-	if len(os.Args) > 2 {
-		log.Fatal("Usage: golox [script]\n")
-	} else if len(os.Args) == 2 {
-		// run script from file.
-		runFile(os.Args[1])
-	} else {
-		// will lauch the prompt
+	switch len(os.Args) {
+	case 1:
 		runPrompt()
+	case 2:
+		runFile(os.Args[1])
+	default:
+		fmt.Fprintln(os.Stderr, "Usage: golox [script]")
+		os.Exit(64)
 	}
 }
 
 func runFile(path string) {
 	extension := filepath.Ext(path)
-	if extension != ".golox" {
-		log.Fatal("Script file must ends with the [.golox] extension")
-	}
-	source, err := os.ReadFile(path)
-	if err != nil {
-		log.Fatalf("Error: [%v]", err)
+	if extension != ".golox" && extension != ".lox" {
+		log.Fatal("Script file must end with .golox or .lox extension")
 	}
 
-	if err := run(string(source)); err != nil {
-		fmt.Printf("Error: %v\n", err)
+	source, err := os.ReadFile(path)
+	if err != nil {
+		log.Fatalf("Error reading file: %v", err)
 	}
+
+	run(string(source))
+
+	// Exit with appropriate error code
 	if errors.HadError {
 		os.Exit(65)
 	}
@@ -44,41 +46,66 @@ func runFile(path string) {
 }
 
 func runPrompt() {
-	// read from the standard input
 	scanner := bufio.NewScanner(os.Stdin)
+
+	fmt.Println("GoLox REPL - Type 'exit' to quit")
+
 	for {
 		fmt.Print("> ")
+
 		if !scanner.Scan() {
 			break
 		}
-		line := scanner.Text()
+
+		line := strings.TrimSpace(scanner.Text())
+
+		// Allow user to exit gracefully
+		if line == "exit" || line == "quit" {
+			fmt.Println("Goodbye!")
+			break
+		}
+
 		if line == "" {
 			continue
 		}
-		if err := run(line); err != nil {
-			fmt.Printf("Error: %v\n", err)
-		}
+
+		run(line)
+
+		// Reset error flag in REPL mode so user can continue
 		errors.HadError = false
+		errors.HadRuntimeError = false
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading input: %v\n", err)
 	}
 }
 
-func run(source string) error {
+func run(source string) {
+	// Scanning
 	scanner := NewScanner(source)
 	tokens := scanner.ScanTokens()
 
+	// Stop if there were scan errors
+	if errors.HadError {
+		return
+	}
+
+	// Parsing
 	parser := parser.NewParser(tokens)
 	expression, err := parser.Parse()
 
 	if err != nil {
 		fmt.Println(err.Error())
-		return err
+		errors.HadError = true
+		return
 	}
-  if expression == nil {
-    return nil
-  }
 
-	intepreter := Interpreter{}
-	intepreter.Interpret(expression)
+	if expression == nil {
+		return
+	}
 
-	return nil
+	// Interpreting
+	interpreter := NewInterpreter()
+	interpreter.Interpret(expression)
 }

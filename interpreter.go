@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"golox/errors"
 	"golox/expr"
 	"golox/token"
 )
@@ -15,28 +16,30 @@ func (r runtimeError) Error() string {
 	return fmt.Sprintf("[line %d] RuntimeError: %s", r.tok.Line, r.message)
 }
 
-type Interpreter struct{}
+type Interpreter struct {
+	// Can add environment here later for variables
+	// environment *Environment
+}
+
+func NewInterpreter() *Interpreter {
+	return &Interpreter{}
+}
 
 func (i *Interpreter) Interpret(expression expr.Expression[any]) {
 	defer func() {
 		if r := recover(); r != nil {
 			if rerr, ok := r.(runtimeError); ok {
 				fmt.Println(rerr.Error())
+				errors.HadRuntimeError = true
 			} else {
-				// programming error, not a Lox runtime error
+				// This is a programming error, not a Lox runtime error
 				panic(r)
 			}
 		}
 	}()
 
 	value := i.evaluate(expression)
-
-	if value == nil {
-		fmt.Println("nil")
-		return
-	}
-
-	fmt.Println(value)
+	fmt.Println(i.stringify(value))
 }
 
 func (i *Interpreter) VisitBinary(b *expr.Binary[any]) any {
@@ -44,7 +47,6 @@ func (i *Interpreter) VisitBinary(b *expr.Binary[any]) any {
 	right := i.evaluate(b.Right)
 
 	switch b.Operator.TokenType {
-
 	// Arithmetic
 	case token.MINUS:
 		i.checkNumberOperands(left, right, *b.Operator)
@@ -62,20 +64,19 @@ func (i *Interpreter) VisitBinary(b *expr.Binary[any]) any {
 		return left.(float64) * right.(float64)
 
 	case token.PLUS:
-		switch l := left.(type) {
-		case float64:
+		// Handle number + number
+		if l, ok := left.(float64); ok {
 			if r, ok := right.(float64); ok {
 				return l + r
 			}
-		case string:
+		}
+		// Handle string + string
+		if l, ok := left.(string); ok {
 			if r, ok := right.(string); ok {
 				return l + r
 			}
 		}
-		panic(i.error(
-			*b.Operator,
-			"Operands must be two numbers or two strings",
-		))
+		panic(i.error(*b.Operator, "Operands must be two numbers or two strings"))
 
 	// Comparison
 	case token.GREATER:
@@ -133,15 +134,14 @@ func (i *Interpreter) evaluate(e expr.Expression[any]) any {
 	return e.Accept(i)
 }
 
+// Lox's truthiness rules: false and nil are falsey, everything else is truthy
 func (i *Interpreter) isTruthy(value any) bool {
 	if value == nil {
 		return false
 	}
-
 	if b, ok := value.(bool); ok {
 		return b
 	}
-
 	return true
 }
 
@@ -170,7 +170,6 @@ func (i *Interpreter) checkNumberOperand(value any, op token.Token) {
 	if _, ok := value.(float64); ok {
 		return
 	}
-
 	panic(i.error(op, "Operand must be a number"))
 }
 
@@ -179,4 +178,21 @@ func (i *Interpreter) error(tok token.Token, format string, args ...any) runtime
 		tok:     tok,
 		message: fmt.Sprintf(format, args...),
 	}
+}
+
+// Convert Lox values to strings for printing
+func (i *Interpreter) stringify(value any) string {
+	if value == nil {
+		return "nil"
+	}
+
+	// Format numbers nicely (remove unnecessary .0)
+	if num, ok := value.(float64); ok {
+		if num == float64(int64(num)) {
+			return fmt.Sprintf("%d", int64(num))
+		}
+		return fmt.Sprintf("%g", num)
+	}
+
+	return fmt.Sprintf("%v", value)
 }

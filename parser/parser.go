@@ -5,22 +5,7 @@ import (
 	"golox/expr"
 	"golox/token"
 	"slices"
-	"strconv"
 )
-
-/*
-
-expression    -> equality
-equality      -> comparasion (("==" | "!=") comparasion)* ;
-comparasion   -> term ((">" | ">=" | "<" | "<=") comparasion)* ;
-term          -> factor (("+" | "-") factor)* ;
-factor        -> unary (("/" | "*") unary)* ;
-unary         -> ("!" | "-") unary
-                  | primary ;
-primary       -> NUMBER | STRING | "true" | "false" | "nil"
-                  | "(" expression ")" ;
-
-*/
 
 type parseError struct {
 	message string
@@ -28,21 +13,23 @@ type parseError struct {
 }
 
 func (p parseError) Error() string {
-	if p.token.Lexeme != "" {
-		return fmt.Sprintf("Error at '%s' on line %d: %s", p.token.Lexeme, p.token.Line+1, p.message)
+	if p.token.TokenType == token.EOF {
+		return fmt.Sprintf("[line %d] ParseError at end: %s", p.token.Line, p.message)
 	}
-	return p.message
+	return fmt.Sprintf("[line %d] ParseError at '%s': %s", p.token.Line, p.token.Lexeme, p.message)
 }
 
 type Parser struct {
 	Tokens  []token.Token
 	current int
+	errors  []error // Collect multiple errors
 }
 
 func NewParser(tokens []token.Token) *Parser {
 	return &Parser{
 		Tokens:  tokens,
 		current: 0,
+		errors:  []error{},
 	}
 }
 
@@ -51,9 +38,9 @@ func (p *Parser) Parse() (expression expr.Expression[any], err error) {
 		if r := recover(); r != nil {
 			if pe, ok := r.(parseError); ok {
 				expression = nil
-				err = pe // This now works because err is a named return value
+				err = pe
 			} else {
-				panic(r)
+				panic(r) // Programming error, not parse error
 			}
 		}
 	}()
@@ -65,18 +52,17 @@ func (p *Parser) Parse() (expression expr.Expression[any], err error) {
 	}
 
 	if !p.isAtEnd() {
-		return nil, p.error(p.peek(), "Expect end of expression.")
+		return nil, p.error(p.peek(), "Expected end of expression")
 	}
 
 	return expression, nil
 }
 
-// expression rule
+// Expression parsing methods remain the same...
 func (p *Parser) expression() expr.Expression[any] {
 	return p.equality()
 }
 
-// equality rule
 func (p *Parser) equality() expr.Expression[any] {
 	expression := p.comparasion()
 
@@ -89,7 +75,6 @@ func (p *Parser) equality() expr.Expression[any] {
 	return expression
 }
 
-// comparasion rule
 func (p *Parser) comparasion() expr.Expression[any] {
 	expression := p.term()
 
@@ -144,31 +129,27 @@ func (p *Parser) primary() expr.Expression[any] {
 		return expr.NewLiteral[any](true)
 	case p.match(token.NIL):
 		return expr.NewLiteral[any](nil)
-	}
-
-	if p.match(token.STRING, token.NUMBER) {
+	case p.match(token.STRING, token.NUMBER):
 		tok := p.previous()
 		return expr.NewLiteral[any](tok.Literal)
-	}
-
-	if p.match(token.LEFT_PAREN) {
+	case p.match(token.LEFT_PAREN):
 		expression := p.expression()
-		p.consume(token.RIGHT_PAREN, "Expected ')' at the end of a grouping expression.")
+		p.consume(token.RIGHT_PAREN, "Expected ')' after expression")
 		return expr.NewGrouping(expression)
 	}
 
-	panic(p.error(p.peek(), fmt.Sprintf("expecting an expression, but found '%s'", p.peek().Lexeme)))
+	panic(p.error(p.peek(), "Expected expression"))
 }
 
-// utilities functions
+// Utility functions
 func (p *Parser) consume(tokenType token.TokenType, message string) token.Token {
 	if p.check(tokenType) {
 		return p.advance()
 	}
-	panic(parseError{message: fmt.Sprintf("Error at %s on line %d: %s", strconv.Quote(p.peek().Lexeme), p.peek().Line+1, message)})
+	panic(p.error(p.peek(), message))
 }
 
-func (p *Parser) error(tok token.Token, message string) error {
+func (p *Parser) error(tok token.Token, message string) parseError {
 	return parseError{token: tok, message: message}
 }
 
@@ -181,7 +162,8 @@ func (p *Parser) synchronize() {
 		}
 
 		switch p.peek().TokenType {
-		case token.CLASS, token.FUN, token.VAR, token.FOR, token.IF, token.WHILE, token.PRINT, token.RETURN:
+		case token.CLASS, token.FUN, token.VAR, token.FOR,
+			token.IF, token.WHILE, token.PRINT, token.RETURN:
 			return
 		}
 
@@ -190,14 +172,6 @@ func (p *Parser) synchronize() {
 }
 
 func (p *Parser) match(tokens ...token.TokenType) bool {
-
-	// for _, tokenType := range tokens {
-	// 	if p.check(tokenType) {
-	// 		p.advance()
-	// 		return true
-	// 	}
-	// }
-
 	found := slices.ContainsFunc(tokens, func(t token.TokenType) bool {
 		return p.check(t)
 	})
@@ -214,17 +188,11 @@ func (p *Parser) check(tokType token.TokenType) bool {
 	if p.isAtEnd() {
 		return false
 	}
-
-	tok := p.peek()
-	return tok.TokenType == tokType
+	return p.peek().TokenType == tokType
 }
 
 func (p *Parser) isAtEnd() bool {
-	tok := p.peek()
-	if tok.TokenType == token.EOF {
-		return true
-	}
-	return false
+	return p.peek().TokenType == token.EOF
 }
 
 func (p *Parser) advance() token.Token {
