@@ -46,32 +46,29 @@ func NewParser(tokens []token.Token) *Parser {
 	}
 }
 
-func (p *Parser) Parse() (expr.Expression[any], error) {
-	var lastErr error
-
+func (p *Parser) Parse() (expression expr.Expression[any], err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			if e, ok := r.(parseError); ok {
-				lastErr = e
-				p.synchronize()
+			if pe, ok := r.(parseError); ok {
+				expression = nil
+				err = pe // This now works because err is a named return value
 			} else {
 				panic(r)
 			}
 		}
 	}()
 
-	result := p.expression()
+	expression = p.expression()
 
-	// TODO: This block is need till we'll add statements
-	if p.check(token.SEMICOLON) {
-		p.advance()
+	if p.match(token.SEMICOLON) {
+		// expression statement (temporary)
 	}
 
 	if !p.isAtEnd() {
 		return nil, p.error(p.peek(), "Expect end of expression.")
 	}
 
-	return result, lastErr
+	return expression, nil
 }
 
 // expression rule
@@ -213,13 +210,13 @@ func (p *Parser) match(tokens ...token.TokenType) bool {
 	return false
 }
 
-func (p *Parser) check(token token.TokenType) bool {
+func (p *Parser) check(tokType token.TokenType) bool {
 	if p.isAtEnd() {
 		return false
 	}
 
 	tok := p.peek()
-	return tok.TokenType == token
+	return tok.TokenType == tokType
 }
 
 func (p *Parser) isAtEnd() bool {

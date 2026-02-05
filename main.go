@@ -23,7 +23,6 @@ func main() {
 }
 
 func runFile(path string) {
-	// read the file content and executes it
 	extension := filepath.Ext(path)
 	if extension != ".golox" {
 		log.Fatal("Script file must ends with the [.golox] extension")
@@ -33,7 +32,9 @@ func runFile(path string) {
 		log.Fatalf("Error: [%v]", err)
 	}
 
-	run(string(source))
+	if err := run(string(source)); err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
 	if errors.HadError {
 		os.Exit(65)
 	}
@@ -70,18 +71,14 @@ func run(source string) error {
 
 	if err != nil {
 		fmt.Println(err.Error())
-		return nil
+		return err
 	}
-
-  // if errors.HadError { return  }
-
-  intepreter := Interpreter{}
-  errStr := intepreter.Interpret(expression)
-  if errStr == " " {
-    errors.ReportRuntimeError(errStr)
-    errors.HadRuntimeError = true
+  if expression == nil {
+    return nil
   }
+
+	intepreter := Interpreter{}
+	intepreter.Interpret(expression)
 
 	return nil
 }
-

@@ -1,5 +1,5 @@
 
-// this is a comment
-(( )){} // grouping stuff
-!*+-/=<> <= == // operators
+/* 1 + 1; */
+/* 1 + "coll"; */
+true == false
 
