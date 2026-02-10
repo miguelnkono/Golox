@@ -1,5 +1,7 @@
 
 print 1 + 1;
-/* print 1 + "coll"; */
+print 1 + "coll";
 print true == false;
-
+print "first";
+var broken syntax here
+print "second";

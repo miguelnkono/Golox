@@ -8,23 +8,32 @@ import (
 	"slices"
 )
 
-// program        -> statement* EOF ;
+// program        -> declaration* EOF ;
+// declaration    -> varDecl
+//                | statement ;
+// varDecl        -> "var" IDENTIFY ( "=" expression )? ";" ;
 // statement      -> exprStmt
 //                | printStmt ;
 // exprStmt       -> expression ";" ;
 // printStmt      -> "print" expression ";" ;
 
-// expression     → literal
-//               | unary
-//               | binary
-//               | grouping ;
+// expression     → assignment ;
+
+// assignment     → ( call "." )? IDENTIFIER "=" assignment
+//                | logic_or ;
 //
-// literal        → NUMBER | STRING | "true" | "false" | "nil" ;
-// grouping       → "(" expression ")" ;
-// unary          → ( "-" | "!" ) expression ;
-// binary         → expression operator expression ;
-// operator       → "==" | "!=" | "<" | "<=" | ">" | ">="
-//                | "+"  | "-"  | "*" | "/" ;
+// logic_or       → logic_and ( "or" logic_and )* ;
+// logic_and      → equality ( "and" equality )* ;
+// equality       → comparison ( ( "!=" | "==" ) comparison )* ;
+// comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+// term           → factor ( ( "-" | "+" ) factor )* ;
+// factor         → unary ( ( "/" | "*" ) unary )* ;
+//
+// unary          → ( "!" | "-" ) unary | call ;
+// call           → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
+// primary        → "true" | "false" | "nil" | "this"
+//                | NUMBER | STRING | IDENTIFIER | "(" expression ")"
+//                | "super" "." IDENTIFIER ;
 
 type parseError struct {
 	message string
@@ -53,24 +62,51 @@ func NewParser(tokens []token.Token) *Parser {
 }
 
 func (p *Parser) Parse() (stmts []stmt.Statement[any], err []error) {
+	var statements []stmt.Statement[any]
+
+	for !p.isAtEnd() {
+		decl := p.declaration()
+		if decl != nil {
+			statements = append(statements, decl)
+		}
+	}
+
+	// Return any collected errors
+	if len(p.errors) > 0 {
+		return statements, p.errors
+	}
+
+	return statements, nil
+}
+
+func (p *Parser) declaration() stmt.Statement[any] {
 	defer func() {
 		if r := recover(); r != nil {
 			if pe, ok := r.(parseError); ok {
-				stmts = make([]stmt.Statement[any], 0)
-				err = append(err, pe)
+				p.errors = append(p.errors, pe)
+				p.synchronize()
 			} else {
 				panic(r)
 			}
 		}
 	}()
 
-	var statements []stmt.Statement[any]
+	if p.match(token.VAR) {
+		return p.varDecleration()
+	}
+	return p.statement()
+}
 
-	for !p.isAtEnd() {
-		statements = append(statements, p.statement())
+func (p *Parser) varDecleration() stmt.Statement[any] {
+	name := p.consume(token.IDENTIFIER, "Expected a variable name.")
+
+	var initializer expr.Expression[any] = nil
+	if p.match(token.EQUAL) {
+		initializer = p.expression()
 	}
 
-	return statements, nil
+	p.consume(token.SEMICOLON, "Expected ';' after variable declaration!")
+	return stmt.NewVarStmt(name, initializer)
 }
 
 func (p *Parser) statement() stmt.Statement[any] {
@@ -170,6 +206,8 @@ func (p *Parser) primary() expr.Expression[any] {
 		expression := p.expression()
 		p.consume(token.RIGHT_PAREN, "Expected ')' after expression")
 		return expr.NewGrouping(expression)
+	case p.match(token.IDENTIFIER):
+		return expr.NewVariable[any](p.previous())
 	}
 
 	panic(p.error(p.peek(), "Expected expression"))

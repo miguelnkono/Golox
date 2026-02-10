@@ -7,6 +7,7 @@ type Visitor[T any] interface {
 	VisitUnary(unary *Unary[T]) T
 	VisitGrouping(grouping *Grouping[T]) T
 	VisitLiteral(literal *Literal[T]) T
+	VisitVariable(variable *Variable[T]) T
 }
 
 type Expression[T any] interface {
@@ -69,4 +70,18 @@ func NewUnary[T any](operator token.Token, right Expression[T]) Expression[T] {
 
 func (u *Unary[T]) Accept(visitor Visitor[T]) T {
 	return visitor.VisitUnary(u)
+}
+
+type Variable[T any] struct {
+	Name token.Token
+}
+
+func NewVariable[T any](name token.Token) Expression[T] {
+	return &Variable[T]{
+		Name: name,
+	}
+}
+
+func (v *Variable[T]) Accept(visitor Visitor[T]) T {
+	return visitor.VisitVariable(v)
 }

@@ -1,11 +1,15 @@
 package stmt
 
-import "golox/expr"
+import (
+	"golox/expr"
+	"golox/token"
+)
 
 // visitor
 type Visitor[T any] interface {
 	VisitExpressionStmt(ep *ExpressionStmt[T])
 	VisitPrintStmt(ep *PrintStmt[T])
+	VisitVarStmt(v *VarStmt[T])
 }
 
 // statement class
@@ -39,4 +43,20 @@ func NewPrintStmt[T any](e expr.Expression[T]) *PrintStmt[T] {
 }
 func (es *PrintStmt[T]) Accept(visitor Visitor[T]) {
 	visitor.VisitPrintStmt(es)
+}
+
+// Var statement class
+type VarStmt[T any] struct {
+	Name        token.Token
+	Initializer expr.Expression[T]
+}
+
+func NewVarStmt[T any](name token.Token, initializer expr.Expression[T]) *VarStmt[T] {
+	return &VarStmt[T]{
+		Name:        name,
+		Initializer: initializer,
+	}
+}
+func (v *VarStmt[T]) Accept(visitor Visitor[T]) {
+	visitor.VisitVarStmt(v)
 }
