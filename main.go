@@ -48,7 +48,7 @@ func runFile(path string) {
 func runPrompt() {
 	scanner := bufio.NewScanner(os.Stdin)
 
-	fmt.Println("GoLox REPL - Type 'exit' to quit")
+	fmt.Println("GoLox REPL - Type 'exit' or 'quit' to quit")
 
 	for {
 		fmt.Print("> ")
@@ -93,19 +93,15 @@ func run(source string) {
 
 	// Parsing
 	parser := parser.NewParser(tokens)
-	expression, err := parser.Parse()
+	statements, err := parser.Parse()
 
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println(err)
 		errors.HadError = true
-		return
-	}
-
-	if expression == nil {
 		return
 	}
 
 	// Interpreting
 	interpreter := NewInterpreter()
-	interpreter.Interpret(expression)
+	interpreter.Interpret(statements)
 }

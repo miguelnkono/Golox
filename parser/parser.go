@@ -3,9 +3,28 @@ package parser
 import (
 	"fmt"
 	"golox/expr"
+	"golox/stmt"
 	"golox/token"
 	"slices"
 )
+
+// program        -> statement* EOF ;
+// statement      -> exprStmt
+//                | printStmt ;
+// exprStmt       -> expression ";" ;
+// printStmt      -> "print" expression ";" ;
+
+// expression     → literal
+//               | unary
+//               | binary
+//               | grouping ;
+//
+// literal        → NUMBER | STRING | "true" | "false" | "nil" ;
+// grouping       → "(" expression ")" ;
+// unary          → ( "-" | "!" ) expression ;
+// binary         → expression operator expression ;
+// operator       → "==" | "!=" | "<" | "<=" | ">" | ">="
+//                | "+"  | "-"  | "*" | "/" ;
 
 type parseError struct {
 	message string
@@ -33,32 +52,47 @@ func NewParser(tokens []token.Token) *Parser {
 	}
 }
 
-func (p *Parser) Parse() (expression expr.Expression[any], err error) {
+func (p *Parser) Parse() (stmts []stmt.Statement[any], err []error) {
 	defer func() {
 		if r := recover(); r != nil {
 			if pe, ok := r.(parseError); ok {
-				expression = nil
-				err = pe
+				stmts = make([]stmt.Statement[any], 0)
+				err = append(err, pe)
 			} else {
-				panic(r) // Programming error, not parse error
+				panic(r)
 			}
 		}
 	}()
 
-	expression = p.expression()
+	var statements []stmt.Statement[any]
 
-	if p.match(token.SEMICOLON) {
-		// expression statement (temporary)
+	for !p.isAtEnd() {
+		statements = append(statements, p.statement())
 	}
 
-	if !p.isAtEnd() {
-		return nil, p.error(p.peek(), "Expected end of expression")
-	}
-
-	return expression, nil
+	return statements, nil
 }
 
-// Expression parsing methods remain the same...
+func (p *Parser) statement() stmt.Statement[any] {
+	if p.match(token.PRINT) {
+		return p.printStatement()
+	}
+
+	return p.expressionStatement()
+}
+
+func (p *Parser) printStatement() stmt.Statement[any] {
+	exp := p.expression()
+	p.consume(token.SEMICOLON, "Expected ';' after value.")
+	return stmt.NewPrintStmt(exp)
+}
+
+func (p *Parser) expressionStatement() stmt.Statement[any] {
+	exp := p.expression()
+	p.consume(token.SEMICOLON, "Expected ';' after value.")
+	return stmt.NewExpressionStmt(exp)
+}
+
 func (p *Parser) expression() expr.Expression[any] {
 	return p.equality()
 }

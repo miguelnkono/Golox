@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"golox/errors"
 	"golox/expr"
+	"golox/stmt"
 	"golox/token"
 )
 
@@ -25,7 +26,7 @@ func NewInterpreter() *Interpreter {
 	return &Interpreter{}
 }
 
-func (i *Interpreter) Interpret(expression expr.Expression[any]) {
+func (i *Interpreter) Interpret(stmts []stmt.Statement[any]) {
 	defer func() {
 		if r := recover(); r != nil {
 			if rerr, ok := r.(runtimeError); ok {
@@ -38,10 +39,27 @@ func (i *Interpreter) Interpret(expression expr.Expression[any]) {
 		}
 	}()
 
-	value := i.evaluate(expression)
+	for _, st := range stmts {
+
+		i.execute(st)
+	}
+}
+
+func (i *Interpreter) execute(st stmt.Statement[any]) {
+	st.Accept(i)
+}
+
+// statement visitor
+func (i *Interpreter) VisitExpressionStmt(ep *stmt.ExpressionStmt[any]) {
+	i.evaluate(ep.Expr)
+}
+
+func (i *Interpreter) VisitPrintStmt(ep *stmt.PrintStmt[any]) {
+	value := i.evaluate(ep.Expr)
 	fmt.Println(i.stringify(value))
 }
 
+// expression visitor
 func (i *Interpreter) VisitBinary(b *expr.Binary[any]) any {
 	left := i.evaluate(b.Left)
 	right := i.evaluate(b.Right)
@@ -134,7 +152,6 @@ func (i *Interpreter) evaluate(e expr.Expression[any]) any {
 	return e.Accept(i)
 }
 
-// Lox's truthiness rules: false and nil are falsey, everything else is truthy
 func (i *Interpreter) isTruthy(value any) bool {
 	if value == nil {
 		return false
@@ -180,13 +197,11 @@ func (i *Interpreter) error(tok token.Token, format string, args ...any) runtime
 	}
 }
 
-// Convert Lox values to strings for printing
 func (i *Interpreter) stringify(value any) string {
 	if value == nil {
 		return "nil"
 	}
 
-	// Format numbers nicely (remove unnecessary .0)
 	if num, ok := value.(float64); ok {
 		if num == float64(int64(num)) {
 			return fmt.Sprintf("%d", int64(num))

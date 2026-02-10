@@ -1,5 +1,5 @@
 
-/* 1 + 1; */
-/* 1 + "coll"; */
-true == false
+print 1 + 1;
+/* print 1 + "coll"; */
+print true == false;
 
