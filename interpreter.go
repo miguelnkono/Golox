@@ -18,12 +18,13 @@ func (r runtimeError) Error() string {
 }
 
 type Interpreter struct {
-	// Can add environment here later for variables
-	// environment *Environment
+	environment *Environment
 }
 
 func NewInterpreter() *Interpreter {
-	return &Interpreter{}
+	return &Interpreter{
+		environment: NewEnvironment(),
+	}
 }
 
 func (i *Interpreter) Interpret(stmts []stmt.Statement[any]) {
@@ -59,7 +60,25 @@ func (i *Interpreter) VisitPrintStmt(ep *stmt.PrintStmt[any]) {
 	fmt.Println(i.stringify(value))
 }
 
+func (i *Interpreter) VisitVarStmt(v *stmt.VarStmt[any]) {
+	var value token.Object
+	if v.Initializer != nil {
+		value = i.evaluate(v.Initializer)
+	}
+	i.environment.Define(v.Name.Lexeme, value)
+}
+
 // expression visitor
+func (i *Interpreter) VisitVariable(v *expr.Variable[any]) any {
+
+	value, err := i.environment.Get(v.Name.Lexeme)
+	if err != nil {
+		panic(i.error(v.Name, "%s", err.Error()))
+	}
+
+	return value
+}
+
 func (i *Interpreter) VisitBinary(b *expr.Binary[any]) any {
 	left := i.evaluate(b.Left)
 	right := i.evaluate(b.Right)

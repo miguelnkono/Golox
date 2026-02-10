@@ -81,6 +81,8 @@ func runPrompt() {
 	}
 }
 
+var interpreter = NewInterpreter()
+
 func run(source string) {
 	// Scanning
 	scanner := NewScanner(source)
@@ -102,6 +104,5 @@ func run(source string) {
 	}
 
 	// Interpreting
-	interpreter := NewInterpreter()
 	interpreter.Interpret(statements)
 }
