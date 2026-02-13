@@ -23,6 +23,8 @@ func main() {
 	}
 }
 
+var interpreter = NewInterpreter()
+
 func runFile(path string) {
 	extension := filepath.Ext(path)
 	if extension != ".golox" && extension != ".lox" {
@@ -80,8 +82,6 @@ func runPrompt() {
 		fmt.Fprintf(os.Stderr, "Error reading input: %v\n", err)
 	}
 }
-
-var interpreter = NewInterpreter()
 
 func run(source string) {
 	// Scanning

@@ -1,6 +1,8 @@
 package expr
 
-import "golox/token"
+import (
+	"golox/token"
+)
 
 type Visitor[T any] interface {
 	VisitBinary(binary *Binary[T]) T
@@ -8,12 +10,14 @@ type Visitor[T any] interface {
 	VisitGrouping(grouping *Grouping[T]) T
 	VisitLiteral(literal *Literal[T]) T
 	VisitVariable(variable *Variable[T]) T
+	VisitAssignment(assignment *Assignment[T]) T
 }
 
 type Expression[T any] interface {
 	Accept(visitor Visitor[T]) T
 }
 
+// binary node
 type Binary[T any] struct {
 	Left     Expression[T]
 	Operator *token.Token
@@ -72,6 +76,7 @@ func (u *Unary[T]) Accept(visitor Visitor[T]) T {
 	return visitor.VisitUnary(u)
 }
 
+// the variable node
 type Variable[T any] struct {
 	Name token.Token
 }
@@ -84,4 +89,21 @@ func NewVariable[T any](name token.Token) Expression[T] {
 
 func (v *Variable[T]) Accept(visitor Visitor[T]) T {
 	return visitor.VisitVariable(v)
+}
+
+// the assignment node
+type Assignment[T any] struct {
+	Tok token.Token
+	Exp Expression[T]
+}
+
+func NewAssignment[T any](tok token.Token, exp Expression[T]) Expression[T] {
+	return &Assignment[T]{
+		Tok: tok,
+		Exp: exp,
+	}
+}
+
+func (a *Assignment[T]) Accept(visitor Visitor[T]) T {
+	return visitor.VisitAssignment(a)
 }

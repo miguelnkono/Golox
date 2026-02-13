@@ -130,7 +130,25 @@ func (p *Parser) expressionStatement() stmt.Statement[any] {
 }
 
 func (p *Parser) expression() expr.Expression[any] {
-	return p.equality()
+	return p.assignment()
+}
+
+func (p *Parser) assignment() expr.Expression[any] {
+	exp := p.equality()
+
+	if p.match(token.EQUAL) {
+		equals := p.previous()
+		value := p.assignment()
+
+		if variable, ok := exp.(*expr.Variable[any]); ok {
+			name := variable.Name
+			return expr.NewAssignment(name, value)
+		}
+
+		panic(p.error(equals, "Invalid assignment target!"))
+	}
+
+	return exp
 }
 
 func (p *Parser) equality() expr.Expression[any] {

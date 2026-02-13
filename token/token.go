@@ -54,7 +54,8 @@ const (
 	WHILE
 )
 
-type Object interface{}
+// generic object to represent a value in our interpreter
+type Object any
 
 type Token struct {
 	TokenType TokenType

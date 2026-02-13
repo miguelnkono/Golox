@@ -167,6 +167,13 @@ func (i *Interpreter) VisitLiteral(l *expr.Literal[any]) any {
 	return l.Value
 }
 
+func (i *Interpreter) VisitAssignment(a *expr.Assignment[any]) any {
+	value := i.evaluate(a.Exp)
+	i.environment.Assign(a.Tok.Lexeme, value)
+
+	return value
+}
+
 func (i *Interpreter) evaluate(e expr.Expression[any]) any {
 	return e.Accept(i)
 }
