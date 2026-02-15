@@ -174,6 +174,22 @@ func (i *Interpreter) VisitAssignment(a *expr.Assignment[any]) any {
 	return value
 }
 
+func (i *Interpreter) VisitBlockStmt(b *stmt.BlockStmt[any]) {
+	i.executeBlock(b.Stmts, NewEnclosedEnvironment(i.environment))
+}
+
+func (i *Interpreter) executeBlock(stmts []stmt.Statement[any], env *Environment) {
+	previousEnv := i.environment
+
+	i.environment = env
+
+	for _, st := range stmts {
+		i.execute(st)
+	}
+
+	i.environment = previousEnv
+}
+
 func (i *Interpreter) evaluate(e expr.Expression[any]) any {
 	return e.Accept(i)
 }
