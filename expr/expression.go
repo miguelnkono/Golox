@@ -11,10 +11,30 @@ type Visitor[T any] interface {
 	VisitLiteral(literal *Literal[T]) T
 	VisitVariable(variable *Variable[T]) T
 	VisitAssignment(assignment *Assignment[T]) T
+	VisitLogical(logical *Logical[T]) T
 }
 
 type Expression[T any] interface {
 	Accept(visitor Visitor[T]) T
+}
+
+// Logical node
+type Logical[T any] struct {
+	Left     Expression[T]
+	Operator token.Token
+	Right    Expression[T]
+}
+
+func NewLogical[T any](left Expression[T], operator token.Token, right Expression[T]) Expression[T] {
+	return &Logical[T]{
+		Left:     left,
+		Operator: operator,
+		Right:    right,
+	}
+}
+
+func (logical *Logical[T]) Accept(visitor Visitor[T]) T {
+	return visitor.VisitLogical(logical)
 }
 
 // binary node

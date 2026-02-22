@@ -11,11 +11,48 @@ type Visitor[T any] interface {
 	VisitPrintStmt(ep *PrintStmt[T])
 	VisitVarStmt(v *VarStmt[T])
 	VisitBlockStmt(b *BlockStmt[T])
+	VisitIfStmt(i *IfStmt[T])
+	VisitWhileStmt(w *WhileStmt[T])
 }
 
 // statement class
 type Statement[T any] interface {
 	Accept(visitor Visitor[T])
+}
+
+// if statement
+type WhileStmt[T any] struct {
+	Condition expr.Expression[T]
+	Body      Statement[T]
+}
+
+func NewWhileStmt[T any](condition expr.Expression[T], body Statement[T]) *WhileStmt[T] {
+	return &WhileStmt[T]{
+		Condition: condition,
+		Body:      body,
+	}
+}
+
+func (w *WhileStmt[T]) Accept(visitor Visitor[T]) {
+	visitor.VisitWhileStmt(w)
+}
+
+type IfStmt[T any] struct {
+	Condition  expr.Expression[T]
+	ThenBranch Statement[T]
+	ElseBranch Statement[T]
+}
+
+func NewIfStmt[T any](condition expr.Expression[T], thenBranch, elseBranch Statement[T]) *IfStmt[T] {
+	return &IfStmt[T]{
+		Condition:  condition,
+		ThenBranch: thenBranch,
+		ElseBranch: elseBranch,
+	}
+}
+
+func (i *IfStmt[T]) Accept(visitor Visitor[T]) {
+	visitor.VisitIfStmt(i)
 }
 
 // expression statement class

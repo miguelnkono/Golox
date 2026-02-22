@@ -51,6 +51,20 @@ func (i *Interpreter) execute(st stmt.Statement[any]) {
 }
 
 // statement visitor
+func (i *Interpreter) VisitWhileStmt(w *stmt.WhileStmt[any]) {
+	for i.isTruthy(i.evaluate(w.Condition)) {
+		i.execute(w.Body)
+	}
+}
+
+func (i *Interpreter) VisitIfStmt(is *stmt.IfStmt[any]) {
+	if i.isTruthy(i.evaluate(is.Condition)) {
+		i.execute(is.ThenBranch)
+	} else if is.ElseBranch != nil {
+		i.execute(is.ElseBranch)
+	}
+}
+
 func (i *Interpreter) VisitExpressionStmt(ep *stmt.ExpressionStmt[any]) {
 	i.evaluate(ep.Expr)
 }
@@ -69,6 +83,22 @@ func (i *Interpreter) VisitVarStmt(v *stmt.VarStmt[any]) {
 }
 
 // expression visitor
+func (i *Interpreter) VisitLogical(logical *expr.Logical[any]) any {
+	left := i.evaluate(logical.Left)
+
+	if logical.Operator.TokenType == token.OR {
+		if i.isTruthy(left) {
+			return left
+		}
+	} else {
+		if !i.isTruthy(left) {
+			return left
+		}
+	}
+
+	return i.evaluate(logical.Right)
+}
+
 func (i *Interpreter) VisitVariable(v *expr.Variable[any]) any {
 
 	value, err := i.environment.Get(v.Name.Lexeme)
@@ -101,6 +131,7 @@ func (i *Interpreter) VisitBinary(b *expr.Binary[any]) any {
 		return left.(float64) * right.(float64)
 
 	case token.PLUS:
+		// TODO: apply the plus operator to numbers and string
 		// Handle number + number
 		if l, ok := left.(float64); ok {
 			if r, ok := right.(float64); ok {

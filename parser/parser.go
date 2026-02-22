@@ -12,8 +12,24 @@ import (
 // declaration    -> varDecl
 //                | statement ;
 // varDecl        -> "var" IDENTIFY ( "=" expression )? ";" ;
-// statement      -> exprStmt
-//                | printStmt ;
+// statement      → exprStmt
+//                | forStmt
+//                | ifStmt
+//                | printStmt
+//                | returnStmt
+//                | whileStmt
+//                | block ;
+
+// exprStmt       → expression ";" ;
+// forStmt        → "for" "(" ( varDecl | exprStmt | ";" )
+//                            expression? ";"
+//                            expression? ")" statement ;
+// ifStmt         → "if" "(" expression ")" statement
+//                  ( "else" statement )? ;
+// printStmt      → "print" expression ";" ;
+// returnStmt     → "return" expression? ";" ;
+// whileStmt      → "while" "(" expression ")" statement ;
+// block          → "{" declaration* "}" ;
 // exprStmt       -> expression ";" ;
 // printStmt      -> "print" expression ";" ;
 
@@ -116,8 +132,83 @@ func (p *Parser) statement() stmt.Statement[any] {
 	if p.match(token.LEFT_BRACE) {
 		return stmt.NewBlockStmt(p.block())
 	}
+	if p.match(token.IF) {
+		return p.ifStatement()
+	}
+	if p.match(token.WHILE) {
+		return p.whileStmt()
+	}
+	if p.match(token.FOR) {
+		return p.forStmt()
+	}
 
 	return p.expressionStatement()
+}
+
+func (p *Parser) forStmt() stmt.Statement[any] {
+	p.consume(token.LEFT_PAREN, "Expect '(' after the for keyword.")
+
+	var initializer stmt.Statement[any]
+	if p.match(token.VAR) {
+		initializer = p.varDecleration()
+	} else if p.match(token.SEMICOLON) {
+		initializer = nil
+	} else {
+		initializer = p.expressionStatement()
+	}
+
+	var condition expr.Expression[any]
+	if !p.check(token.SEMICOLON) {
+		condition = p.expression()
+	}
+	p.consume(token.SEMICOLON, "Expect ';' after the loop condition.")
+
+	var increment expr.Expression[any]
+	if !p.check(token.RIGHT_PAREN) {
+		increment = p.expression()
+	}
+	p.consume(token.RIGHT_PAREN, "Expect ';' after the incrementation.")
+
+	body := p.statement()
+
+	if increment != nil {
+		body = stmt.NewBlockStmt([]stmt.Statement[any]{body, stmt.NewExpressionStmt(increment)})
+	}
+
+	if condition == nil {
+		condition = expr.NewLiteral[any](true)
+	}
+	body = stmt.NewWhileStmt(condition, body)
+
+	if initializer != nil {
+		body = stmt.NewBlockStmt([]stmt.Statement[any]{initializer, body})
+	}
+
+	return body
+}
+
+func (p *Parser) whileStmt() stmt.Statement[any] {
+	p.consume(token.LEFT_PAREN, "Expect '(' after the while keyword.")
+	condition := p.expression()
+	p.consume(token.RIGHT_PAREN, "Expect ')' after the condition.")
+	body := p.statement()
+
+	return stmt.NewWhileStmt(condition, body)
+}
+
+// parsing the if statement.
+func (p *Parser) ifStatement() stmt.Statement[any] {
+	p.consume(token.LEFT_PAREN, "Expect '(' after the if statement.")
+	condition := p.expression()
+	p.consume(token.RIGHT_PAREN, "Expect ')' at the end of the if statement.")
+	thenBranch := p.statement()
+	var elseBranch stmt.Statement[any]
+
+	if p.match(token.ELSE) {
+		elseBranch = p.statement()
+	}
+
+	return stmt.NewIfStmt(condition, thenBranch, elseBranch)
 }
 
 func (p *Parser) block() []stmt.Statement[any] {
@@ -148,7 +239,8 @@ func (p *Parser) expression() expr.Expression[any] {
 }
 
 func (p *Parser) assignment() expr.Expression[any] {
-	exp := p.equality()
+	// exp := p.equality()
+	exp := p.or()
 
 	if p.match(token.EQUAL) {
 		equals := p.previous()
@@ -160,6 +252,29 @@ func (p *Parser) assignment() expr.Expression[any] {
 		}
 
 		panic(p.error(equals, "Invalid assignment target!"))
+	}
+
+	return exp
+}
+
+func (p *Parser) or() expr.Expression[any] {
+	exp := p.and()
+	for p.match(token.OR) {
+		operator := p.previous()
+		right := p.and()
+		exp = expr.NewLogical(exp, operator, right)
+	}
+
+	return exp
+}
+
+func (p *Parser) and() expr.Expression[any] {
+	exp := p.equality()
+
+	for p.match(token.AND) {
+		operator := p.previous()
+		right := p.equality()
+		exp = expr.NewLogical(exp, operator, right)
 	}
 
 	return exp
