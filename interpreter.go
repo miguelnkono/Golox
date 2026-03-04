@@ -30,6 +30,8 @@ func NewInterpreter() *Interpreter {
 func (i *Interpreter) Interpret(stmts []stmt.Statement[any]) {
 	defer func() {
 		if r := recover(); r != nil {
+
+			// cast the error from recover to runtimeError;
 			if rerr, ok := r.(runtimeError); ok {
 				fmt.Println(rerr.Error())
 				errors.HadRuntimeError = true

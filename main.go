@@ -100,9 +100,10 @@ func run(source string) {
 	if err != nil {
 		fmt.Println(err)
 		errors.HadError = true
-		return
 	}
 
 	// Interpreting
-	interpreter.Interpret(statements)
+	if errors.HadError == false {
+		interpreter.Interpret(statements)
+	}
 }

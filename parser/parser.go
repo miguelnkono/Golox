@@ -66,7 +66,7 @@ func (p parseError) Error() string {
 type Parser struct {
 	Tokens  []token.Token
 	current int
-	errors  []error // Collect multiple errors
+	errors  []error
 }
 
 func NewParser(tokens []token.Token) *Parser {
@@ -99,6 +99,8 @@ func (p *Parser) declaration() stmt.Statement[any] {
 	defer func() {
 		if r := recover(); r != nil {
 			if pe, ok := r.(parseError); ok {
+
+				// collect all the error happening while parsing;
 				p.errors = append(p.errors, pe)
 				p.synchronize()
 			} else {

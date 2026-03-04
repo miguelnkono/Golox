@@ -14,6 +14,7 @@ type ErrorReporter struct {
 }
 
 func NewErrorReporter(w io.Writer) *ErrorReporter {
+	// defaultly write to the standard error output;
 	if w == nil {
 		w = os.Stderr
 	}
