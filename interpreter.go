@@ -85,6 +85,28 @@ func (i *Interpreter) VisitVarStmt(v *stmt.VarStmt[any]) {
 }
 
 // expression visitor
+
+func (i *Interpreter) VisitCall(call *expr.Call[any]) any {
+	callee := i.evaluate(call.Calleee)
+
+	var arguments []token.Object
+	for _, argument := range call.Arguments {
+		arguments = append(arguments, i.evaluate(argument))
+	}
+
+	// cast to a LoxCallable object;
+	function, ok := callee.(LoxCallable)
+	if !ok {
+		panic(i.error(call.OpeningParen, "Can only call functions and classes."))
+	}
+
+	if len(arguments) != function.Arity() {
+		panic(i.error(call.OpeningParen, "Expected %d arguments but got %d .", len(call.Arguments), function.Arity()))
+	}
+
+	return function.Call(i, arguments)
+}
+
 func (i *Interpreter) VisitLogical(logical *expr.Logical[any]) any {
 	left := i.evaluate(logical.Left)
 

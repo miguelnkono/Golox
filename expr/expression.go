@@ -12,10 +12,29 @@ type Visitor[T any] interface {
 	VisitVariable(variable *Variable[T]) T
 	VisitAssignment(assignment *Assignment[T]) T
 	VisitLogical(logical *Logical[T]) T
+	VisitCall(callee *Call[T]) T
 }
 
 type Expression[T any] interface {
 	Accept(visitor Visitor[T]) T
+}
+
+type Call[T any] struct {
+	Calleee      Expression[T]
+	OpeningParen token.Token
+	Arguments    []Expression[T]
+}
+
+func (c *Call[T]) Accept(visitor Visitor[T]) T {
+	return visitor.VisitCall(c)
+}
+
+func NewCall[T any](callee Expression[T], OpeningParen token.Token, arguments []Expression[T]) Expression[T] {
+	return &Call[T]{
+		Calleee:      callee,
+		OpeningParen: OpeningParen,
+		Arguments:    arguments,
+	}
 }
 
 // Logical node

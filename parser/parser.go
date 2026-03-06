@@ -337,7 +337,40 @@ func (p *Parser) unary() expr.Expression[any] {
 		return expr.NewUnary(operator, right)
 	}
 
-	return p.primary()
+	return p.call()
+}
+
+func (p *Parser) call() expr.Expression[any] {
+	exp := p.primary()
+
+	for {
+		// function calls occur only when we see a left parenthese;
+		if p.match(token.LEFT_PAREN) {
+			exp = p.finishCall(exp)
+		} else {
+			break
+		}
+	}
+
+	return exp
+}
+
+func (p *Parser) finishCall(callee expr.Expression[any]) expr.Expression[any] {
+	var arguments []expr.Expression[any]
+
+	if !p.check(token.RIGHT_PAREN) {
+		// check for the arity;
+		if len(arguments) >= 255 {
+			p.error(p.peek(), "Can't have more than 244 arguments.")
+		}
+
+		arguments = append(arguments, p.expression())
+		for p.match(token.COMMA) {
+			arguments = append(arguments, p.expression())
+		}
+	}
+
+	return expr.NewCall(callee, p.consume(token.RIGHT_PAREN, "Expected ')' after the arguments."), arguments)
 }
 
 func (p *Parser) primary() expr.Expression[any] {
