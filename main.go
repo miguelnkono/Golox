@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"golox/errors"
+	"golox/interpreter"
 	"golox/parser"
+	"golox/scanner"
 	"log"
 	"os"
 	"path/filepath"
@@ -23,7 +25,8 @@ func main() {
 	}
 }
 
-var interpreter = NewInterpreter()
+// var interpreter = NewInterpreter()
+var interp = interpreter.NewInterpreter()
 
 func runFile(path string) {
 	extension := filepath.Ext(path)
@@ -71,6 +74,7 @@ func runPrompt() {
 			continue
 		}
 
+		interp.IsRepl = true;	// set IsRepl to true to allow printing value inside the REPL console;
 		run(line)
 
 		// Reset error flag in REPL mode so user can continue
@@ -85,7 +89,7 @@ func runPrompt() {
 
 func run(source string) {
 	// Scanning
-	scanner := NewScanner(source)
+	scanner := scanner.NewScanner(source)
 	tokens := scanner.ScanTokens()
 
 	// Stop if there were scan errors
@@ -104,6 +108,6 @@ func run(source string) {
 
 	// Interpreting
 	if errors.HadError == false {
-		interpreter.Interpret(statements)
+		interp.Interpret(statements)
 	}
 }
