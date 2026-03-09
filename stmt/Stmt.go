@@ -13,11 +13,31 @@ type Visitor[T any] interface {
 	VisitBlockStmt(b *BlockStmt[T])
 	VisitIfStmt(i *IfStmt[T])
 	VisitWhileStmt(w *WhileStmt[T])
+	VisitFunctionStmt(f *Function[T])
 }
 
 // statement class
 type Statement[T any] interface {
 	Accept(visitor Visitor[T])
+}
+
+// function statement
+type Function[T any] struct {
+	Name token.Token
+	Parameters []token.Token
+	Body [] Statement[T]
+}
+
+func NewFunction[T any](name token.Token, parameters []token.Token, body []Statement[T]) *Function[T] {
+	return &Function[T]{
+		Name: name,
+		Parameters: parameters,
+		Body: body,
+	}
+}
+
+func (f *Function[T]) Accept(visitor Visitor[T]) {
+	visitor.VisitFunctionStmt(f)
 }
 
 // if statement

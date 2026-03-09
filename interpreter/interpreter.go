@@ -97,6 +97,11 @@ func (i *Interpreter) VisitVarStmt(v *stmt.VarStmt[any]) {
 	i.environment.Define(v.Name.Lexeme, value)
 }
 
+func (i *Interpreter) VisitFunctionStmt(f *stmt.Function[any]) {
+	function := NewLoxFunction(*f)
+	i.environment.Define(f.Name.Lexeme, function)
+}
+
 // expression visitor
 
 func (i *Interpreter) VisitCall(call *expr.Call[any]) any {
@@ -114,7 +119,7 @@ func (i *Interpreter) VisitCall(call *expr.Call[any]) any {
 	}
 
 	if len(arguments) != function.Arity() {
-		panic(i.error(call.OpeningParen, "Expected %d arguments but got %d .", len(call.Arguments), function.Arity()))
+		panic(i.error(call.OpeningParen, "Expected %d arguments but got %d .",function.Arity(), function.Arity()))
 	}
 
 	return function.Call(i, arguments)

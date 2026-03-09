@@ -11,6 +11,7 @@ import (
 // program        -> declaration* EOF ;
 // declaration    -> varDecl
 //                | statement ;
+//                | funDecl ;
 // varDecl        -> "var" IDENTIFY ( "=" expression )? ";" ;
 // statement      → exprStmt
 //                | forStmt
@@ -109,10 +110,37 @@ func (p *Parser) declaration() stmt.Statement[any] {
 		}
 	}()
 
+	if p.match(token.FUN) {
+		return p.function("function");
+	}
+
 	if p.match(token.VAR) {
 		return p.varDecleration()
 	}
 	return p.statement()
+}
+
+func (p *Parser) function(kind string) stmt.Statement[any] {
+	name := p.consume(token.IDENTIFIER, fmt.Sprintf("Expected %s name", kind))
+	
+	p.consume(token.LEFT_PAREN, fmt.Sprintf("Expected '(' after %s name", kind))
+	var parameters []token.Token
+	if !p.check(token.RIGHT_PAREN) {
+		if len(parameters) > 255 {
+			panic(p.error(p.peek(), "Can't have more than 255 parameters!"))
+		}
+
+		parameters = append(parameters, p.consume(token.IDENTIFIER, "Expected parameter name!"))
+		for p.match(token.COMMA) {
+			parameters = append(parameters, p.consume(token.IDENTIFIER, "Expected parameter name!"))
+		}
+	}
+	p.consume(token.RIGHT_PAREN, "Expected ')' after parameters!")
+
+	p.consume(token.LEFT_BRACE, fmt.Sprintf("Expected '{' before %s name", kind))
+	body := p.block()
+
+	return stmt.NewFunction(name, parameters, body)
 }
 
 func (p *Parser) varDecleration() stmt.Statement[any] {
