@@ -156,6 +156,9 @@ func (p *Parser) varDecleration() stmt.Statement[any] {
 }
 
 func (p *Parser) statement() stmt.Statement[any] {
+	if p.match(token.RETURN) {
+		return p.returnStatement()
+	}
 	if p.match(token.PRINT) {
 		return p.printStatement()
 	}
@@ -173,6 +176,17 @@ func (p *Parser) statement() stmt.Statement[any] {
 	}
 
 	return p.expressionStatement()
+}
+
+func (p *Parser) returnStatement() stmt.Statement[any] {
+	keyword := p.previous()
+
+	var value expr.Expression[any] = nil
+	if !p.check(token.SEMICOLON) {
+		value = p.expression()
+	}
+	p.consume(token.SEMICOLON, "Expected ';' after the return keyword!")
+	return stmt.NewReturnStmt(keyword, value)
 }
 
 func (p *Parser) forStmt() stmt.Statement[any] {

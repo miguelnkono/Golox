@@ -31,7 +31,7 @@ func NewInterpreter() *Interpreter {
 
 	return &Interpreter{
 		globals:     gl,
-		environment: NewEnclosedEnvironment(gl),
+		environment: gl,
 		IsRepl: false,
 	}
 }
@@ -102,6 +102,15 @@ func (i *Interpreter) VisitFunctionStmt(f *stmt.Function[any]) {
 	i.environment.Define(f.Name.Lexeme, function)
 }
 
+func (i *Interpreter) VisitReturnStmt(r *stmt.Return[any]) {
+	var value any = nil
+	if r.Value != nil {
+		value = i.evaluate(r.Value)
+	}
+
+	panic(returnSignal{value: value})
+}
+
 // expression visitor
 
 func (i *Interpreter) VisitCall(call *expr.Call[any]) any {
@@ -119,7 +128,7 @@ func (i *Interpreter) VisitCall(call *expr.Call[any]) any {
 	}
 
 	if len(arguments) != function.Arity() {
-		panic(i.error(call.OpeningParen, "Expected %d arguments but got %d .",function.Arity(), function.Arity()))
+		panic(i.error(call.OpeningParen, "Expected %d arguments but got %d .",function.Arity(), len(arguments)))
 	}
 
 	return function.Call(i, arguments)
@@ -253,14 +262,15 @@ func (i *Interpreter) VisitBlockStmt(b *stmt.BlockStmt[any]) {
 
 func (i *Interpreter) executeBlock(stmts []stmt.Statement[any], env *Environment) {
 	previousEnv := i.environment
-
 	i.environment = env
+
+	defer func ()  {
+		i.environment = previousEnv
+	}()
 
 	for _, st := range stmts {
 		i.execute(st)
 	}
-
-	i.environment = previousEnv
 }
 
 func (i *Interpreter) evaluate(e expr.Expression[any]) any {

@@ -14,11 +14,29 @@ type Visitor[T any] interface {
 	VisitIfStmt(i *IfStmt[T])
 	VisitWhileStmt(w *WhileStmt[T])
 	VisitFunctionStmt(f *Function[T])
+	VisitReturnStmt(r *Return[T])
 }
 
 // statement class
 type Statement[T any] interface {
 	Accept(visitor Visitor[T])
+}
+
+// return statement
+type Return[T any] struct {
+	Keyword token.Token
+	Value expr.Expression[T] // todo: should check this;;
+}
+
+func NewReturnStmt[T any](keyword token.Token, value expr.Expression[T]) *Return[T] {
+	return &Return[T]{
+		Keyword: keyword,
+		Value: value,
+	}
+}
+
+func (r *Return[T]) Accept(visitor Visitor[T]) {
+	visitor.VisitReturnStmt(r)
 }
 
 // function statement

@@ -15,13 +15,22 @@ func NewLoxFunction(declaration stmt.Function[any]) *LoxFunction {
 	}
 }
 
-func (l *LoxFunction) Call(interpreter *Interpreter, arguments []any) any {
+func (l *LoxFunction) Call(interpreter *Interpreter, arguments []any) (result any) {
 	environment := NewEnclosedEnvironment(interpreter.globals)
 
 	for i := 0; i < len(l.declaration.Parameters); i++ {
 		environment.Define(l.declaration.Parameters[i].Lexeme, arguments[i])
 	}
 
+	defer func() {
+		if r := recover(); r != nil {
+			if ret, ok := r.(returnSignal); ok {
+				result = ret.value
+			} else {
+				panic(r) 
+			}
+		}
+	}()
 	interpreter.executeBlock(l.declaration.Body, environment)
 
 	return nil
