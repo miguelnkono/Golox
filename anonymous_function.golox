@@ -1,0 +1,10 @@
+/* var foo = fun f() { */
+/*     print "anonymous function!!"; */
+/* } */
+
+/* var foo = fun () { */
+/*     print "cool"; */
+/* } */
+/* print foo(); */
+fun () { print "cool"; }
+

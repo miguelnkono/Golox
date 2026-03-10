@@ -13,7 +13,10 @@ import (
 //                | statement ;
 //                | funDecl ;
 // varDecl        -> "var" IDENTIFY ( "=" expression )? ";" ;
-// statement      → exprStmt
+// funDecl        -> "fun" function ;
+// function       -> IDENTIFIER "(" parameter? ")" block ;
+// parameter      -> IDENTIFIER ( "," IDENTIFIER ) ;
+// statement      -> exprStmt
 //                | forStmt
 //                | ifStmt
 //                | printStmt
@@ -111,7 +114,7 @@ func (p *Parser) declaration() stmt.Statement[any] {
 	}()
 
 	if p.match(token.FUN) {
-		return p.function("function");
+		return p.function("function")
 	}
 
 	if p.match(token.VAR) {
@@ -122,7 +125,7 @@ func (p *Parser) declaration() stmt.Statement[any] {
 
 func (p *Parser) function(kind string) stmt.Statement[any] {
 	name := p.consume(token.IDENTIFIER, fmt.Sprintf("Expected %s name", kind))
-	
+
 	p.consume(token.LEFT_PAREN, fmt.Sprintf("Expected '(' after %s name", kind))
 	var parameters []token.Token
 	if !p.check(token.RIGHT_PAREN) {
