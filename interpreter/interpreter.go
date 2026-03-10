@@ -98,7 +98,7 @@ func (i *Interpreter) VisitVarStmt(v *stmt.VarStmt[any]) {
 }
 
 func (i *Interpreter) VisitFunctionStmt(f *stmt.Function[any]) {
-	function := NewLoxFunction(*f)
+	function := NewLoxFunction(*f, *i.environment)
 	i.environment.Define(f.Name.Lexeme, function)
 }
 

@@ -1,0 +1,28 @@
+
+fun make_counter() {
+    var i = 0;
+
+    fun count() {
+        i = i + 1;
+        print i;
+    }
+
+    return count;
+}
+
+var counter = make_counter( );
+
+for ( var i = 0; i <= 4; i = i + 1 ) {
+    counter();
+}
+
+fun scope( a ) {
+    print a;
+
+    var a = "local";
+
+    return a;
+}
+
+print scope( "bonjour" );
+

@@ -7,16 +7,18 @@ import (
 
 type LoxFunction struct {
 	declaration stmt.Function[any]
+	closure     Environment
 }
 
-func NewLoxFunction(declaration stmt.Function[any]) *LoxFunction {
-	return & LoxFunction{
+func NewLoxFunction(declaration stmt.Function[any], closure Environment) *LoxFunction {
+	return &LoxFunction{
 		declaration: declaration,
+		closure: closure,
 	}
 }
 
 func (l *LoxFunction) Call(interpreter *Interpreter, arguments []any) (result any) {
-	environment := NewEnclosedEnvironment(interpreter.globals)
+	environment := NewEnclosedEnvironment(&l.closure)
 
 	for i := 0; i < len(l.declaration.Parameters); i++ {
 		environment.Define(l.declaration.Parameters[i].Lexeme, arguments[i])
@@ -27,7 +29,7 @@ func (l *LoxFunction) Call(interpreter *Interpreter, arguments []any) (result an
 			if ret, ok := r.(returnSignal); ok {
 				result = ret.value
 			} else {
-				panic(r) 
+				panic(r)
 			}
 		}
 	}()
@@ -40,6 +42,6 @@ func (l *LoxFunction) Arity() int {
 	return len(l.declaration.Parameters)
 }
 
-func (l *LoxFunction) String() string { 
-	return fmt.Sprintf("<fn %s >\n", l.declaration.Name.Lexeme); 
+func (l *LoxFunction) String() string {
+	return fmt.Sprintf("<fn %s >\n", l.declaration.Name.Lexeme)
 }
